@@ -402,7 +402,7 @@ namespace Fonlow.OpenApiClientGen.CS
 				statementCollection.Add(new CodeSnippetStatement("\t\t\t\tusing (JsonReader jsonReader = new JsonTextReader(new System.IO.StreamReader(stream)))"));
 				statementCollection.Add(new CodeSnippetStatement("\t\t\t\t{"));
 				statementCollection.Add(new CodeVariableDeclarationStatement(
-					new CodeTypeReference("var"), "serializer", new CodeSnippetExpression("new JsonSerializer()")));
+					new CodeTypeReference("var"), "serializer", new CodeSnippetExpression("JsonSerializer.Create(this.jsonSerializerSettings)"))); //"new JsonSerializer()"
 				statementCollection.Add(new CodeMethodReturnStatement(new CodeMethodInvokeExpression(
 					new CodeMethodReferenceExpression(new CodeVariableReferenceExpression("serializer"), "Deserialize", returnTypeReference),
 						new CodeSnippetExpression("jsonReader"))));
