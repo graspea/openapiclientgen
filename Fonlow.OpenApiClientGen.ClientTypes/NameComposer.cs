@@ -89,7 +89,9 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 			}
 
 			string byWhat = String.Join("And", op.Parameters.Where(p => p.In == ParameterLocation.Path || p.In == ParameterLocation.Query).Select(p => NameFunc.ToTitleCase(NameFunc.RefineParameterName(p.Name))));
-			return ToTitleCase(op.Tags[0].Name) + httpMethod + (String.IsNullOrEmpty(byWhat) ? String.Empty : "By" + byWhat);
+			var s =  ToTitleCase(op.Tags[0].Name) + httpMethod + (String.IsNullOrEmpty(byWhat) ? String.Empty : "By" + byWhat);
+			Console.WriteLine(s);
+			return s;
 		}
 
 		/// <summary>
@@ -114,7 +116,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 		string ComposeActionNameWithPath(OpenApiOperation op, string httpMethod, string path)
 		{
 			string byWhat = String.Join("And", op.Parameters.Where(p => p.In == ParameterLocation.Query).Select(p => NameFunc.ToTitleCase(NameFunc.RefineParameterName(p.Name))));
-			return PathToActionOrContainerName(path) + httpMethod + (String.IsNullOrEmpty(byWhat) ? String.Empty : "By" + byWhat);
+			return NameFunc.ReplaceDashToTitleCase(PathToActionOrContainerName(path) + httpMethod + (String.IsNullOrEmpty(byWhat) ? String.Empty : "By" + byWhat));
 		}
 
 		/// <summary>
@@ -128,11 +130,11 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 			switch (settings.ContainerNameStrategy)
 			{
 				case ContainerNameStrategy.Path:
-					return PathToActionOrContainerName(path) + settings.ContainerNameSuffix;
+					return NameFunc.ReplaceDashToTitleCase(PathToActionOrContainerName(path) + settings.ContainerNameSuffix);
 				case ContainerNameStrategy.Tags:
 					if (op.Tags != null && op.Tags.Count > 0)
 					{
-						return ToTitleCase(op.Tags[0].Name) + settings.ContainerNameSuffix;//todo: concanate multiple ones?
+						return NameFunc.ReplaceDashToTitleCase(ToTitleCase(op.Tags[0].Name) + settings.ContainerNameSuffix);//todo: concanate multiple ones?
 					}
 					else
 					{

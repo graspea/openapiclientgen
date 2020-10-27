@@ -356,7 +356,9 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 			bool propertyNameAdjusted = propertyName != p.Key;
 
 			OpenApiSchema propertySchema = p.Value;
+			if (propertySchema == null) return;
 			string primitivePropertyType = propertySchema.Type;
+			
 			bool isPrimitiveType = TypeRefHelper.IsPrimitiveTypeOfOA(primitivePropertyType);
 			bool isRequired = schema.Required.Contains(p.Key); //compare with the original key
 			string defaultValue = GetDefaultValue(propertySchema);

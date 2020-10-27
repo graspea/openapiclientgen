@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices.ComTypes;
+using System.Text;
 
 namespace Fonlow.OpenApiClientGen.ClientTypes
 {
@@ -81,7 +82,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 			{
 				b = "_" + b;
 			}
-
+			
 			return b;
 		}
 
@@ -136,7 +137,6 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 			}
 
 			var rs = s.Replace('-', '_').Replace("$", "").Replace('.', '_').Replace('[', '_').Replace("]", "");
-			
 			return rs;
 		}
 
@@ -147,9 +147,9 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 				return s;
 			}
 
-			return NameFunc.ToTitleCase(s.Replace("$", "").Replace(':', '_').Replace('-', '_').Replace('.', '_')
-				.Replace('[', '_').Replace(']', '_').Replace('/', '_').Replace('#', '_')
-				.Replace(' ', '_'));
+			return NameFunc.ReplaceDashToTitleCase((NameFunc.ToTitleCase(s.Replace("$", "").Replace(':', '_').Replace('-', '_').Replace('.', '_')
+				.Replace('[', '_').Replace(']', '_').Replace('/', '_').Replace('#', '_').Replace('@', '_')
+				.Replace(' ', '_'))));
 		}
 
 		public static string RefineTsPropertyName(string s)
@@ -166,6 +166,30 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 		{
 			return String.IsNullOrEmpty(s) ? s : (char.ToUpper(s[0]) + (s.Length > 1 ? s.Substring(1) : String.Empty));
 		}
+
+		public static string ReplaceDashToTitleCase(string s)
+        {
+			StringBuilder builder = new StringBuilder();
+			bool lastWasDash = false;
+			foreach(char c in s)
+            {
+				if(c == '_')
+					lastWasDash = true;
+                else
+                {
+					if (lastWasDash)
+					{
+						lastWasDash = false;
+						builder.Append(Char.ToUpper(c));
+					}
+					else
+					{
+						builder.Append(c);
+					}
+                }
+            }
+			return builder.ToString();
+        }
 
 		public static string[] FindNamespacesInClassNames(IEnumerable<string> names)
 		{

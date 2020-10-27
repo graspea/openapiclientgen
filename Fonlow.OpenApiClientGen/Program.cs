@@ -15,7 +15,6 @@ namespace Fonlow.OpenApiClientGen
 		static void Main(string[] args)
 		{
 			Console.WriteLine("Fonlow.OpenApiClientGen.exe generates C# and TypeScript client codes according to an Open API YAML/JSON file.");
-			
 			if (args.Length == 0)
 			{
 				ShowHelp();
@@ -30,6 +29,12 @@ namespace Fonlow.OpenApiClientGen
 				return;
 			}
 
+
+			var dir = Environment.GetEnvironmentVariable("dir");
+			if(Directory.Exists(dir)) Directory.SetCurrentDirectory(dir);
+			Console.WriteLine($"Current directory: {Directory.GetCurrentDirectory()}");
+
+			
 			string defFile = args[0];
 			if (!File.Exists(defFile))
 			{

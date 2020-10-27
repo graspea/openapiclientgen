@@ -3,6 +3,13 @@
     "Fonlow.OpenApiClientGen": {
       "commandName": "Project",
       "commandLineArgs": "pet.yaml petCodeGen.json"
+    },
+    "Debug env": {
+      "commandName": "Project",
+      "commandLineArgs": "api.json config.json",
+      "environmentVariables": {
+        "dir": "../../../../../Zodomus"
+      }
     }
   }
 }
