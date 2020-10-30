@@ -372,7 +372,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 					string propertyTypeName = NameFunc.RefineTypeName(propertySchema.Reference.Id, propertyTypeNs);
 					string propertyTypeWithNs = NameFunc.CombineNamespaceWithClassName(propertyTypeNs, propertyTypeName);
 					CodeTypeReference ctr = ComponentsHelper.TranslateTypeNameToClientTypeReference(propertyTypeWithNs);
-					clientProperty = CreateProperty(ctr, propertyName, defaultValue); //C#
+					clientProperty = CreateProperty(ctr, propertyName, defaultValue, isRequired); //C#
 				}
 				else
 				{
@@ -390,7 +390,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 						}
 						else
 						{
-							clientProperty = CreateProperty(r.Item1, propertyName, defaultValue);
+							clientProperty = CreateProperty(r.Item1, propertyName, defaultValue, isRequired);
 						}
 					}
 				}
@@ -402,12 +402,12 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 					Tuple<CodeTypeReference, string> r = CreateArrayCodeTypeReference(propertySchema, typeDeclaration.Name, propertyName, currentTypeName, ns);
 					CodeTypeReference arrayCodeTypeReference = r.Item1;
 					string n = String.IsNullOrEmpty(r.Item2) ? propertyName : r.Item2;
-					clientProperty = CreateProperty(arrayCodeTypeReference, n, defaultValue);
+					clientProperty = CreateProperty(arrayCodeTypeReference, n, defaultValue, isRequired);
 				}
 				else if (propertySchema.Enum.Count == 0 && propertySchema.Reference != null && !isPrimitiveType) // for complex type
 				{
 					CodeTypeReference complexCodeTypeReference = CreateComplexCodeTypeReference(propertySchema);
-					clientProperty = CreateProperty(complexCodeTypeReference, propertyName, defaultValue);
+					clientProperty = CreateProperty(complexCodeTypeReference, propertyName, defaultValue, isRequired);
 				}
 				else if (propertySchema.Reference == null && propertySchema.Properties != null && propertySchema.Properties.Count > 0) // for casual type
 				{
@@ -420,7 +420,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 					}
 
 					CodeTypeReference ctr = TypeRefHelper.TranslateToClientTypeReference(casualTypeName);
-					clientProperty = CreateProperty(ctr, propertyName, defaultValue);
+					clientProperty = CreateProperty(ctr, propertyName, defaultValue, isRequired);
 				}
 				else if (propertySchema.Type == "object" && propertySchema.AdditionalProperties != null) // for dictionary
 				{
@@ -438,7 +438,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 					}
 
 					CodeTypeReference dicCtr = new CodeTypeReference(typeof(Dictionary<,>).FullName, dicKeyTypeRef, dicValueTypeRef); //for client codes, Dictionary is better than IDictionary, no worry of different implementation of IDictionary
-					clientProperty = CreateProperty(dicCtr, propertyName, null);
+					clientProperty = CreateProperty(dicCtr, propertyName, null, isRequired);
 				}
 				else if (propertySchema.Enum.Count == 0) // for primitive type
 				{
@@ -449,7 +449,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 					}
 					else
 					{
-						clientProperty = CreateProperty(propertyName, simpleType, defaultValue);
+						clientProperty = CreateProperty(propertyName, simpleType, defaultValue,isRequired);
 					}
 				}
 				else if (propertySchema.Enum.Count > 0 && propertySchema.Type == "string") // for enum
@@ -472,7 +472,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 					{
 						string existingTypeName = existingDeclaration.Name;
 						CodeTypeReference enumReference = TypeRefHelper.TranslateToClientTypeReference(existingTypeName);
-						clientProperty = CreateProperty(enumReference, propertyName, String.IsNullOrEmpty(defaultValue) ? null : enumReference.BaseType + "." + defaultValue);
+						clientProperty = CreateProperty(enumReference, propertyName, String.IsNullOrEmpty(defaultValue) ? null : enumReference.BaseType + "." + defaultValue, isRequired);
 					}
 					else
 					{
@@ -482,12 +482,12 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 				else if (propertySchema.Type != "string" && TypeAliasDic.TryGet(propertySchema.Type, out string aliasTypeName)) //check TypeAliasDic
 				{
 					CodeTypeReference r = new CodeTypeReference(aliasTypeName);
-					clientProperty = CreateProperty(r, propertyName, defaultValue);
+					clientProperty = CreateProperty(r, propertyName, defaultValue, isRequired);
 				}
 				else if (propertySchema.Reference != null)
 				{
 					CodeTypeReference complexCodeTypeReference = CreateComplexCodeTypeReference(propertySchema);
-					clientProperty = CreateProperty(complexCodeTypeReference, propertyName, String.IsNullOrEmpty(defaultValue) ? null : complexCodeTypeReference.BaseType + "." + defaultValue);
+					clientProperty = CreateProperty(complexCodeTypeReference, propertyName, String.IsNullOrEmpty(defaultValue) ? null : complexCodeTypeReference.BaseType + "." + defaultValue, isRequired);
 				}
 				else // for casual enum
 				{
@@ -495,21 +495,17 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 				}
 			}
 
-			if (isRequired)
-			{
-				clientProperty.CustomAttributes.Add(new CodeAttributeDeclaration("System.ComponentModel.DataAnnotations.Required"));
-			}
-
 			if (settings.DecorateDataModelWithDataContract)
 			{
+				var required = isRequired ? new CodeAttributeArgument("Required", new CodeSnippetExpression("Json.Required.Always")) : new CodeAttributeArgument("Required", new CodeSnippetExpression("Json.Required.Default"));
 				if (propertyNameAdjusted)
 				{
 					string originalPropertyName = p.Key;
-					clientProperty.CustomAttributes.Add(new CodeAttributeDeclaration("System.Runtime.Serialization.DataMember", new CodeAttributeArgument("Name", new CodeSnippetExpression($"\"{originalPropertyName}\""))));
+					clientProperty.CustomAttributes.Add(new CodeAttributeDeclaration("JsonProperty", new CodeAttributeArgument("PropertyName", new CodeSnippetExpression($"\"{originalPropertyName}\"")),required));
 				}
 				else
 				{
-					clientProperty.CustomAttributes.Add(new CodeAttributeDeclaration("System.Runtime.Serialization.DataMember"));
+					clientProperty.CustomAttributes.Add(new CodeAttributeDeclaration("JsonProperty", required));
 				}
 			}
 
@@ -641,7 +637,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 				}
 			}
 
-			return CreateProperty(r.Item1, propertyName, defaultValue == null ? null : (r.Item2.Name + "." + defaultValue));
+			return CreateProperty(r.Item1, propertyName, defaultValue == null ? null : (r.Item2.Name + "." + defaultValue), true);
 		}
 
 		static string GetDefaultValue(OpenApiSchema s)
@@ -744,7 +740,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 
 		}
 
-		CodeMemberField CreateProperty(string propertyName, Type type, string defaultValue)
+		CodeMemberField CreateProperty(string propertyName, Type type, string defaultValue, bool required)
 		{
 			// This is a little hack. Since you cant create auto properties in CodeDOM,
 			//  we make the getter and setter part of the member name.
@@ -752,8 +748,14 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 			//  Later, we remove the commented out semicolons.
 			string memberName = propertyName + (defaultValue == null || !settings.DataAnnotationsEnabled ? " { get; set; }//" : $" {{ get; set; }} = {defaultValue};//");
 
-			CodeMemberField result = new CodeMemberField() { Type = TypeRefHelper.TranslateToClientTypeReference(type), Name = memberName };
-			result.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+			var t = TypeRefHelper.TranslateToClientTypeReference(type);
+			var r = required ? "" : "?";
+			var a = t.ArrayRank == 1 ? "[]" : "";
+			CodeMemberField result = new CodeMemberField($"{t.BaseType}{a}{r}", memberName)
+			{
+				Attributes = MemberAttributes.Public | MemberAttributes.Final,
+
+			};
 			return result;
 		}
 
@@ -766,7 +768,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 			//  Later, we remove the commented out semicolons.
 			string memberName = propertyName + " { get; set; }//";
 
-			CodeMemberField result = new CodeMemberField($"System.Nullable<{type.FullName}>", memberName)
+			CodeMemberField result = new CodeMemberField($"{type.FullName}?", memberName)
 			{
 				Attributes = MemberAttributes.Public | MemberAttributes.Final
 			};
@@ -781,29 +783,22 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 			//  Later, we remove the commented out semicolons.
 			string memberName = propertyName + " { get; set; }//";
 
-			CodeMemberField result = new CodeMemberField($"System.Nullable<{codeTypeReference.BaseType}>", memberName)
+			CodeMemberField result = new CodeMemberField($"{codeTypeReference.BaseType}?", memberName)
 			{
 				Attributes = MemberAttributes.Public | MemberAttributes.Final
 			};
 			return result;
 		}
 
-		//CodeMemberField CreateProperty(string propertyName, string typeName, string defaultValue)
-		//{
-		//	string memberName = propertyName + (defaultValue == null || !settings.DataAnnotationsEnabled ? " { get; set; }//" : $" {{ get; set; }} = {defaultValue};//");
-
-		//	CodeMemberField result = new CodeMemberField() { Type = ComponentsHelper.TranslateTypeNameToClientTypeReference(typeName), Name = memberName };
-		//	result.Attributes = MemberAttributes.Public | MemberAttributes.Final;
-		//	return result;
-		//}
-
-		CodeMemberField CreateProperty(CodeTypeReference codeTypeReference, string propertyName, string defaultValue)
+		CodeMemberField CreateProperty(CodeTypeReference codeTypeReference, string propertyName, string defaultValue, bool required)
 		{
 			string memberName = propertyName + (defaultValue == null || !settings.DataAnnotationsEnabled ? " { get; set; }//" : $" {{ get; set; }} = {defaultValue};//");
-
-			CodeMemberField result = new CodeMemberField(codeTypeReference, memberName)
+			var r = required ? "" : "?";
+			var a = codeTypeReference.ArrayRank==1?"[]":"";
+			CodeMemberField result = new CodeMemberField($"{codeTypeReference.BaseType}{a}{r}", memberName)
 			{
-				Attributes = MemberAttributes.Public | MemberAttributes.Final
+				Attributes = MemberAttributes.Public | MemberAttributes.Final,
+				
 			};
 			return result;
 		}

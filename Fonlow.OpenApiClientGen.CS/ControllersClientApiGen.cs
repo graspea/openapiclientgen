@@ -135,7 +135,10 @@ namespace Fonlow.OpenApiClientGen.CS
 				new CodeNamespaceImport("System.Threading.Tasks"),
 				new CodeNamespaceImport("System.Net.Http"),
 				new CodeNamespaceImport("Newtonsoft.Json"),
-				new	CodeNamespaceImport("System.IO")	
+				new CodeNamespaceImport("Json = Newtonsoft.Json"),
+				new	CodeNamespaceImport("System.IO"),
+				new CodeNamespaceImport("System.Threading"),
+				new CodeNamespaceImport("System.Net.Http.Headers")
 				});
 
 			if (settings.UseEnsureSuccessStatusCodeEx)
@@ -313,7 +316,7 @@ namespace Fonlow.OpenApiClientGen.CS
 			{
 				Attributes = MemberAttributes.Private,
 				Name = "call",
-				Type = new CodeTypeReference("Func<HttpRequestMessage, Task<string>>")
+				Type = new CodeTypeReference("Func<HttpRequestMessage, CancellationToken, Task<string>>")
 			};
 			targetClass.Members.Add(clientField);
 
@@ -336,7 +339,7 @@ namespace Fonlow.OpenApiClientGen.CS
 
 			// Add parameters.
 			constructor.Parameters.Add(new CodeParameterDeclarationExpression(
-				"Func<HttpRequestMessage,Task<string>>", "call"));
+				"Func<HttpRequestMessage,CancellationToken, Task<string>>", "call"));
 
 			constructor.Parameters.Add(new CodeParameterDeclarationExpression(
 				"JsonSerializerSettings", "jsonSerializerSettings=null"));
