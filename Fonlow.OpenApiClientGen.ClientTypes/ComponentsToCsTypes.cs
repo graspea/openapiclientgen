@@ -344,7 +344,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 			string propertyName = NameFunc.RefinePropertyName(p.Key);
 			if (propertyName == currentTypeName)
 			{
-				Trace.TraceWarning($"Property {propertyName} found with the same name of type {currentTypeName}, and it is renamed to {propertyName}1.");
+				Trace.TraceWarning($"Property {propertyName} found with the same name of type {currentTypeName}, and it is renamed to {propertyName}Property.");
 				propertyName += "1";
 			}
 

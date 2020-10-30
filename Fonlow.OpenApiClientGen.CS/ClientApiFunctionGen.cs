@@ -229,32 +229,34 @@ namespace Fonlow.OpenApiClientGen.CS
 			if (settings.HandleHttpRequestHeaders)
 			{
 				method.Statements.Add(new CodeSnippetStatement(
-				$@"			if (handleHeaders != null)
-			{{
-				handleHeaders(httpRequestMessage.Headers);
-			}}
-"
+				$@"			if (handleHeaders != null)	handleHeaders(httpRequestMessage.Headers);"
 				));
 			}
 
 			method.Statements.Add(new CodeVariableDeclarationStatement(
-				new CodeTypeReference("var"), "responseMessage", forAsync ? new CodeSnippetExpression("await client.SendAsync(httpRequestMessage)") : new CodeSnippetExpression("client.SendAsync(httpRequestMessage).Result")));
+				new CodeTypeReference("var"), "responseMessage", forAsync ? new CodeSnippetExpression("await call(httpRequestMessage)") : new CodeSnippetExpression("call(httpRequestMessage).Result")));
 
 
-			CodeVariableReferenceExpression resultReference = new CodeVariableReferenceExpression("responseMessage");
+			//CodeVariableReferenceExpression resultReference = new CodeVariableReferenceExpression("responseMessage");
 
 
-			CodeTryCatchFinallyStatement try1 = new CodeTryCatchFinallyStatement();
-			try1.TryStatements.Add(new CodeMethodInvokeExpression(resultReference, statementOfEnsureSuccessStatusCode));
-			method.Statements.Add(try1);
+			//CodeTryCatchFinallyStatement try1 = new CodeTryCatchFinallyStatement();
+			//try1.TryStatements.Add(new CodeMethodInvokeExpression(resultReference, statementOfEnsureSuccessStatusCode));
+			//method.Statements.Add(try1);
 
 			//Statement: return something;
 			if (returnTypeReference != null)
 			{
-				AddReturnStatement(try1.TryStatements);
+				method.Statements.Add(new CodeSnippetStatement(
+					$@"			if (responseMessage != null) return Deserialize<{returnTypeReference.BaseType}>(this.jsonSerializer,responseMessage);"
+				));
+				method.Statements.Add(new CodeSnippetStatement(
+				$@"			return null;"
+));
+				//AddReturnStatement();
 			}
 
-			try1.FinallyStatements.Add(new CodeMethodInvokeExpression(resultReference, "Dispose"));
+			//try1.FinallyStatements.Add(new CodeMethodInvokeExpression(resultReference, "Dispose"));
 
 			method.Statements.Add(new CodeSnippetStatement("\t\t\t}"));
 		}
@@ -308,57 +310,65 @@ namespace Fonlow.OpenApiClientGen.CS
 
 			if (requestBodyCodeTypeReference != null)
 			{
-				method.Statements.Add(new CodeSnippetStatement(
-@"			using (var requestWriter = new System.IO.StringWriter())
-			{
-			var requestSerializer = JsonSerializer.Create(jsonSerializerSettings);"
-));
-				method.Statements.Add(new CodeMethodInvokeExpression(new CodeSnippetExpression("requestSerializer"), "Serialize",
-					new CodeSnippetExpression("requestWriter"),
-					new CodeSnippetExpression("requestBody")));
+				//				method.Statements.Add(new CodeSnippetStatement(
+				//@"			using (var requestWriter = new System.IO.StringWriter())
+				//			{
+				//			var requestSerializer = JsonSerializer.Create(jsonSerializerSettings);"
+				//));
+				//				method.Statements.Add(new CodeMethodInvokeExpression(new CodeSnippetExpression("requestSerializer"), "Serialize",
+				//					new CodeSnippetExpression("requestWriter"),
+				//					new CodeSnippetExpression("requestBody")));
 
 
-				method.Statements.Add(new CodeSnippetStatement(
-@"			var content = new StringContent(requestWriter.ToString(), System.Text.Encoding.UTF8, ""application/json"");"
-					));
+				//				method.Statements.Add(new CodeSnippetStatement(
+				//@"			var content = new StringContent(requestWriter.ToString(), System.Text.Encoding.UTF8, ""application/json"");"
+				//					));
 
-				method.Statements.Add(new CodeSnippetStatement(@"			httpRequestMessage.Content = content;"));
+				//				method.Statements.Add(new CodeSnippetStatement(@"			httpRequestMessage.Content = content;"));
+				//				if (settings.HandleHttpRequestHeaders)
+				//				{
+				//					method.Statements.Add(new CodeSnippetStatement(@"			if (handleHeaders != null)
+				//			{
+				//				handleHeaders(httpRequestMessage.Headers);
+				//			}
+				//"));
+				//				}
 				if (settings.HandleHttpRequestHeaders)
 				{
-					method.Statements.Add(new CodeSnippetStatement(@"			if (handleHeaders != null)
-			{
-				handleHeaders(httpRequestMessage.Headers);
-			}
-"));
+					method.Statements.Add(new CodeSnippetStatement(
+					$@"			if (handleHeaders != null)	handleHeaders(httpRequestMessage.Headers);"
+					));
 				}
 
-				method.Statements.Add(new CodeVariableDeclarationStatement(
-					new CodeTypeReference("var"), "responseMessage", forAsync ? new CodeSnippetExpression("await client.SendAsync(httpRequestMessage)") : new CodeSnippetExpression("client.SendAsync(httpRequestMessage).Result")));
+				method.Statements.Add(new CodeSnippetStatement(
+					$@"			var content = new StringContent(Serialize(this.jsonSerializer,requestBody), System.Text.Encoding.UTF8, ""application/json"");"
+				));
+				method.Statements.Add(new CodeSnippetStatement(
+					$@"			httpRequestMessage.Content = content;"
+				));
 
+				method.Statements.Add(new CodeVariableDeclarationStatement(
+					new CodeTypeReference("var"), "responseMessage", forAsync ? new CodeSnippetExpression("await call(httpRequestMessage)") : new CodeSnippetExpression("call(httpRequestMessage).Result")));
 			}
 			else
 			{
 				method.Statements.Add(new CodeVariableDeclarationStatement(
-					new CodeTypeReference("var"), "responseMessage", forAsync ? new CodeSnippetExpression("await client.SendAsync(httpRequestMessage)") : new CodeSnippetExpression("client.SendAsync(httpRequestMessage).Result")));
-
+					new CodeTypeReference("var"), "responseMessage", forAsync ? new CodeSnippetExpression("await call(httpRequestMessage)") : new CodeSnippetExpression("call(httpRequestMessage).Result")));
 			}
-
-			CodeVariableReferenceExpression resultReference = new CodeVariableReferenceExpression("responseMessage");
-
-			CodeTryCatchFinallyStatement try1 = new CodeTryCatchFinallyStatement();
-			method.Statements.Add(try1);
-			try1.TryStatements.Add(new CodeMethodInvokeExpression(resultReference, statementOfEnsureSuccessStatusCode));
 
 			//Statement: return something;
 			if (returnTypeReference != null)
 			{
-				AddReturnStatement(try1.TryStatements);
+				method.Statements.Add(new CodeSnippetStatement(
+					$@"			if (responseMessage != null) return Deserialize<{returnTypeReference.BaseType}>(this.jsonSerializer,responseMessage);"
+				));
+				method.Statements.Add(new CodeSnippetStatement(
+				$@"			return null;"
+));
+				//AddReturnStatement();
 			}
 
-			try1.FinallyStatements.Add(new CodeMethodInvokeExpression(resultReference, "Dispose"));
-
-			if (requestBodyCodeTypeReference != null)
-				method.Statements.Add(new CodeSnippetStatement("\t\t\t}"));
+			//try1.FinallyStatements.Add(new CodeMethodInvokeExpression(resultReference, "Dispose"));
 
 			method.Statements.Add(new CodeSnippetStatement("\t\t\t}"));
 		}

@@ -6,7 +6,7 @@
     },
     "Debug env": {
       "commandName": "Project",
-      "commandLineArgs": "api.json config.json",
+      "commandLineArgs": "api.yaml config.json",
       "environmentVariables": {
         "dir": "../../../../../Zodomus"
       }

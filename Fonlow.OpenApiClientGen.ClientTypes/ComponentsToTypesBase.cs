@@ -286,7 +286,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 					string casualTypeName = typeDeclarationName + NameFunc.RefinePropertyName(propertyName);
 					CodeTypeDeclaration casualTypeDeclaration = AddTypeToClassNamespace(casualTypeName, ns);//stay with the namespace of the host class
 					AddProperties(casualTypeDeclaration, arrayItemsSchema, currentTypeName, ns);
-					return Tuple.Create(ComponentsHelper.CreateArrayOfCustomTypeReference(casualTypeName, 1), casualTypeName);
+					return Tuple.Create(ComponentsHelper.CreateArrayOfCustomTypeReference(casualTypeName, 1), propertyName); //casualTypeName
 				}
 
 				Type clrType = TypeRefHelper.PrimitiveSwaggerTypeToClrType(arrayType, null);

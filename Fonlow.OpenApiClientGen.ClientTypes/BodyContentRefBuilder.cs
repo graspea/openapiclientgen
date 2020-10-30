@@ -49,7 +49,7 @@ namespace Fonlow.OpenApiClientGen.ClientTypes
 				{
 					if (content.Schema != null)
 					{
-						return Tuple.Create(com2CodeDom.PropertySchemaToCodeTypeReference(content.Schema, actionName, httpMethod + "Body"), description, true);
+						return Tuple.Create(com2CodeDom.PropertySchemaToCodeTypeReference(content.Schema, actionName, "Body"), description, true);
 					}
 				}
 				else if (op.RequestBody.Content.Count > 0) // with content but not supported

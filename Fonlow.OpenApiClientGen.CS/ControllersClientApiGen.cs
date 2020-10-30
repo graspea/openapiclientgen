@@ -1,6 +1,7 @@
 ﻿using Fonlow.OpenApiClientGen.ClientTypes;
 using Microsoft.CodeAnalysis;
 using Microsoft.OpenApi.Models;
+using Microsoft.VisualBasic.CompilerServices;
 using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
@@ -18,7 +19,7 @@ namespace Fonlow.OpenApiClientGen.CS
 	{
 		internal CodeFieldReferenceExpression ClientReference { get; set; }
 		internal CodeFieldReferenceExpression BaseUriReference { get; set; }
-		internal CodeFieldReferenceExpression JsonSettingsReference { get; set; }
+		internal CodeFieldReferenceExpression JsonSerializerReference { get; set; }
 	}
 
 
@@ -134,6 +135,7 @@ namespace Fonlow.OpenApiClientGen.CS
 				new CodeNamespaceImport("System.Threading.Tasks"),
 				new CodeNamespaceImport("System.Net.Http"),
 				new CodeNamespaceImport("Newtonsoft.Json"),
+				new	CodeNamespaceImport("System.IO")	
 				});
 
 			if (settings.UseEnsureSuccessStatusCodeEx)
@@ -249,8 +251,59 @@ namespace Fonlow.OpenApiClientGen.CS
 			ns.Types.Add(targetClass);
 			AddLocalFields(targetClass);
 			AddConstructorWithHttpClient(targetClass);
+			AddDeserializeMethod(targetClass);
+			AddSerializeMethod(targetClass);
 
 			return targetClass;
+		}
+
+		static void AddDeserializeMethod(CodeTypeDeclaration targetClass)
+        {
+			CodeMemberMethod method = new CodeMemberMethod();
+			CodeTypeParameter tType = new CodeTypeParameter("T");
+			method.Name = "Deserialize";
+			method.Attributes = MemberAttributes.Private | MemberAttributes.Static;
+			method.TypeParameters.Add(tType);
+			method.ReturnType = new CodeTypeReference("T");
+
+			method.Parameters.Add(new CodeParameterDeclarationExpression(
+				"JsonSerializer", "serializer"));
+			method.Parameters.Add(new CodeParameterDeclarationExpression(
+				"System.String", "jsonText"));
+
+			method.Statements.Add(new CodeSnippetStatement(
+			$@"			using var r = new JsonTextReader(new StringReader(jsonText));"
+			));
+			method.Statements.Add(new CodeSnippetStatement(
+			$@"			return serializer.Deserialize<T>(r);"
+			));
+
+			targetClass.Members.Add(method);
+		}
+
+		static void AddSerializeMethod(CodeTypeDeclaration targetClass)
+		{
+			CodeMemberMethod method = new CodeMemberMethod();
+			method.Name = "Serialize";
+			method.Attributes = MemberAttributes.Private | MemberAttributes.Static;
+			method.ReturnType = new CodeTypeReference("System.String");
+
+			method.Parameters.Add(new CodeParameterDeclarationExpression(
+				"JsonSerializer", "serializer"));
+			method.Parameters.Add(new CodeParameterDeclarationExpression(
+				"System.Object", "value"));
+
+			method.Statements.Add(new CodeSnippetStatement(
+			$@"			using var w = new StringWriter();"
+			));
+			method.Statements.Add(new CodeSnippetStatement(
+			$@"			serializer.Serialize(w, value);"
+			));
+			method.Statements.Add(new CodeSnippetStatement(
+			$@"			return w.ToString();"
+			));
+
+			targetClass.Members.Add(method);
 		}
 
 
@@ -259,18 +312,18 @@ namespace Fonlow.OpenApiClientGen.CS
 			CodeMemberField clientField = new CodeMemberField
 			{
 				Attributes = MemberAttributes.Private,
-				Name = "client",
-				Type = new CodeTypeReference("System.Net.Http.HttpClient")
+				Name = "call",
+				Type = new CodeTypeReference("Func<HttpRequestMessage, Task<string>>")
 			};
 			targetClass.Members.Add(clientField);
 
-			CodeMemberField jsonSettingsField = new CodeMemberField
+			CodeMemberField jsonSerializerField = new CodeMemberField
 			{
 				Attributes = MemberAttributes.Private,
-				Name = "jsonSerializerSettings",
-				Type = new CodeTypeReference("JsonSerializerSettings")
+				Name = "jsonSerializer",
+				Type = new CodeTypeReference("JsonSerializer")
 			};
-			targetClass.Members.Add(jsonSettingsField);
+			targetClass.Members.Add(jsonSerializerField);
 		}
 
 		void AddConstructorWithHttpClient(CodeTypeDeclaration targetClass)
@@ -283,23 +336,24 @@ namespace Fonlow.OpenApiClientGen.CS
 
 			// Add parameters.
 			constructor.Parameters.Add(new CodeParameterDeclarationExpression(
-				"System.Net.Http.HttpClient", "client"));
+				"Func<HttpRequestMessage,Task<string>>", "call"));
 
 			constructor.Parameters.Add(new CodeParameterDeclarationExpression(
 				"JsonSerializerSettings", "jsonSerializerSettings=null"));
 
-			constructor.Statements.Add(new CodeSnippetStatement(@"			if (client == null)
-				throw new ArgumentNullException(""Null HttpClient."", ""client"");
-"));
-			constructor.Statements.Add(new CodeSnippetStatement(@"			if (client.BaseAddress == null)
-				throw new ArgumentNullException(""HttpClient has no BaseAddress"", ""client"");
-"));
 			// Add field initialization logic
-			sharedContext.ClientReference = new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "client");
-			constructor.Statements.Add(new CodeAssignStatement(sharedContext.ClientReference, new CodeArgumentReferenceExpression("client")));
+			sharedContext.ClientReference = new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "call");
+			constructor.Statements.Add(new CodeAssignStatement(sharedContext.ClientReference, new CodeArgumentReferenceExpression("call")));
 
-			sharedContext.JsonSettingsReference = new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "jsonSerializerSettings");
-			constructor.Statements.Add(new CodeAssignStatement(sharedContext.JsonSettingsReference, new CodeArgumentReferenceExpression("jsonSerializerSettings")));
+			sharedContext.JsonSerializerReference = new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "jsonSerializer");
+			CodeMethodInvokeExpression methodInvoke = new CodeMethodInvokeExpression(
+				// targetObject that contains the method to invoke.
+				new CodeTypeReferenceExpression(new CodeTypeReference("JsonSerializer")),
+				// methodName indicates the method to invoke.
+				"Create",
+				// parameters array contains the parameters for the method.
+				new CodeExpression[] { new CodeArgumentReferenceExpression("jsonSerializerSettings") });
+			constructor.Statements.Add(new CodeAssignStatement(sharedContext.JsonSerializerReference, methodInvoke));
 
 			targetClass.Members.Add(constructor);
 		}
